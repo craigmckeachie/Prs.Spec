@@ -222,6 +222,103 @@ The back end uses a code-first approach. Models are C# classes; EF Core generate
 
 ---
 
+## Database Schema
+
+EF Core generates the schema from the C# models using code-first migrations. The SQL Server database is named **`PrsDbC40`** (configurable in `appsettings.json`).
+
+<!-- ![Database Diagram](../screenshots/db-diagram.png) -->
+
+### Conventions
+
+| Convention | Detail |
+|---|---|
+| Table names | Plural PascalCase — `Users`, `Vendors`, `Products`, `Requests`, `RequestLines` |
+| Column names | PascalCase — `FirstName`, `IsReviewer`, `DeliveryMode`, `RejectionReason` |
+| String columns | `NVARCHAR` — supports Unicode |
+| Primary keys | `INT IDENTITY(1,1)` — auto-increment integer named `Id` |
+| Foreign key columns | `{Entity}Id` — e.g., `UserId`, `VendorId`, `ProductId`, `RequestId` |
+| FK constraints | Named `FK_{ChildTable}_{ParentTable}_{Column}`, all with `ON DELETE CASCADE` |
+| Unique constraints | Named `UQ_{Table}_{Column}` — applied to `Username` and `PartNumber` |
+| Indexes | Auto-generated on every FK column; unique index on `Products.PartNumber` |
+
+### Tables
+
+```sql
+-- Users
+CREATE TABLE [dbo].[Users] (
+    [Id]         INT           NOT NULL IDENTITY(1,1),
+    [Username]   NVARCHAR(30)  NOT NULL,
+    [Password]   NVARCHAR(60)  NOT NULL,   -- bcrypt hash
+    [FirstName]  NVARCHAR(30)  NOT NULL,
+    [LastName]   NVARCHAR(30)  NOT NULL,
+    [Phone]      NVARCHAR(12)  NULL,
+    [Email]      NVARCHAR(255) NULL,
+    [IsReviewer] BIT           NOT NULL,
+    [IsAdmin]    BIT           NOT NULL,
+    CONSTRAINT [PK_Users] PRIMARY KEY ([Id]),
+    CONSTRAINT [UQ_Users_Username] UNIQUE ([Username])
+)
+
+-- Vendors
+CREATE TABLE [dbo].[Vendors] (
+    [Id]      INT           NOT NULL IDENTITY(1,1),
+    [Code]    NVARCHAR(30)  NOT NULL,
+    [Name]    NVARCHAR(30)  NOT NULL,
+    [Address] NVARCHAR(30)  NOT NULL,
+    [City]    NVARCHAR(30)  NOT NULL,
+    [State]   NVARCHAR(2)   NOT NULL,
+    [Zip]     NVARCHAR(5)   NOT NULL,
+    [Phone]   NVARCHAR(12)  NULL,
+    [Email]   NVARCHAR(255) NULL,
+    CONSTRAINT [PK_Vendors] PRIMARY KEY ([Id]),
+    CONSTRAINT [UQ_Vendors_Code] UNIQUE ([Code])
+)
+
+-- Products (depends on Vendors)
+CREATE TABLE [dbo].[Products] (
+    [Id]         INT           NOT NULL IDENTITY(1,1),
+    [PartNumber] NVARCHAR(30)  NOT NULL,
+    [Name]       NVARCHAR(30)  NOT NULL,
+    [Price]      DECIMAL(11,2) NOT NULL,
+    [Unit]       NVARCHAR(30)  NOT NULL,
+    [PhotoPath]  NVARCHAR(255) NULL,
+    [VendorId]   INT           NOT NULL,
+    CONSTRAINT [PK_Products] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_Products_Vendors_VendorId]
+        FOREIGN KEY ([VendorId]) REFERENCES [dbo].[Vendors] ([Id]) ON DELETE CASCADE
+)
+
+-- Requests (depends on Users)
+CREATE TABLE [dbo].[Requests] (
+    [Id]              INT           NOT NULL IDENTITY(1,1),
+    [Description]     NVARCHAR(80)  NOT NULL,
+    [Justification]   NVARCHAR(80)  NOT NULL,
+    [RejectionReason] NVARCHAR(80)  NULL,
+    [DeliveryMode]    NVARCHAR(20)  NOT NULL,
+    [Status]          NVARCHAR(10)  NOT NULL,
+    [Total]           DECIMAL(11,2) NOT NULL,
+    [UserId]          INT           NOT NULL,
+    CONSTRAINT [PK_Requests] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_Requests_Users_UserId]
+        FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE CASCADE
+)
+
+-- RequestLines (depends on Requests and Products)
+CREATE TABLE [dbo].[RequestLines] (
+    [Id]        INT NOT NULL IDENTITY(1,1),
+    [Quantity]  INT NOT NULL,
+    [RequestId] INT NOT NULL,
+    [ProductId] INT NOT NULL,
+    CONSTRAINT [PK_RequestLines] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_RequestLines_Requests_RequestId]
+        FOREIGN KEY ([RequestId]) REFERENCES [dbo].[Requests] ([Id]) ON DELETE CASCADE,
+    CONSTRAINT [FK_RequestLines_Products_ProductId]
+        FOREIGN KEY ([ProductId]) REFERENCES [dbo].[Products] ([Id]) ON DELETE CASCADE
+)
+```
+
+---
+
 ## App Shell
 
 Every page except Sign In is wrapped in a shared layout: a fixed **header bar** at the top and a **left sidebar** beneath it.
