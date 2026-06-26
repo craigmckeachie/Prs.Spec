@@ -265,7 +265,7 @@ Every page except Sign In is wrapped in a shared layout: a fixed **header bar** 
 
 ## Sign In Page (`/signin`)
 
-<!-- ![Sign In Page](../screenshots/signin.png) -->
+![Sign In Page](../screenshots/signin.png)
 
 Centered layout with app logo, title, and a card containing:
 
@@ -287,7 +287,7 @@ On failure: display a toast — "Unsuccessful sign in. Please try again."
 
 ## Requests List (`/requests`)
 
-<!-- ![Requests List](../screenshots/requests.png) -->
+![Requests List](../screenshots/requests.png)
 
 **Header:** "Requests" heading + **Create a request** button → `/requests/create`
 
@@ -310,8 +310,8 @@ Delete removes the row from the list on success and shows a success toast.
 
 ## Request Create (`/requests/create`) / Request Edit (`/requests/edit/:id`)
 
-<!-- ![Request Create](../screenshots/requests-create.png) -->
-<!-- ![Request Edit](../screenshots/requests-edit.png) -->
+![Request Create](../screenshots/requests-create.png)
+![Request Edit](../screenshots/requests-edit.png)
 
 Both pages render the same form. On save, both navigate to `/requests/detail/{id}`.
 
@@ -332,7 +332,7 @@ On Edit: PUTs to `PUT /api/requests/:id`, then redirects to the request's detail
 
 ## Request Detail (`/requests/detail/:id`)
 
-<!-- ![Request Detail](../screenshots/requests-detail.png) -->
+![Request Detail](../screenshots/requests-detail.png)
 
 The central screen for a request. Combines the detail view, line item management, and all workflow actions on one page.
 
@@ -387,8 +387,8 @@ Opens a **Bootstrap modal** with:
 **Create:** `/requests/detail/:id/requestline/create`  
 **Edit:** `/requests/detail/:id/requestline/edit/:lineId`
 
-<!-- ![Line Item Create](../screenshots/requests-detail-requestline-create.png) -->
-<!-- ![Line Item Edit](../screenshots/requests-detail-requestline-edit.png) -->
+![Line Item Create](../screenshots/requests-detail-requestline-create.png)
+![Line Item Edit](../screenshots/requests-detail-requestline-edit.png)
 
 Both use the same form page (card titled "Item"):
 
@@ -407,7 +407,7 @@ On save: POSTs or PUTs the line item. The back end recalculates and updates `req
 
 ## Products List (`/products`)
 
-<!-- ![Products List](../screenshots/products.png) -->
+![Products List](../screenshots/products.png)
 
 **Header:** "Products" heading + **Create a product** button → `/products/create`
 
@@ -422,8 +422,8 @@ Displays products as a **card grid** (not a table). Each card shows:
 
 ## Product Create (`/products/create`) / Product Edit (`/products/edit/:id`)
 
-<!-- ![Product Create](../screenshots/products-create.png) -->
-<!-- ![Product Edit](../screenshots/products-edit.png) -->
+![Product Create](../screenshots/products-create.png)
+![Product Edit](../screenshots/products-edit.png)
 
 | Field | Input | Validation |
 |---|---|---|
@@ -439,7 +439,7 @@ On save: navigates to `/products`. POST returns the product with nested vendor; 
 
 ## Vendors List (`/vendors`)
 
-<!-- ![Vendors List](../screenshots/vendors.png) -->
+![Vendors List](../screenshots/vendors.png)
 
 **Header:** "Vendors" heading + **Create a vendor** button → `/vendors/create`
 
@@ -454,8 +454,8 @@ Displays vendors as a **card grid**. Each card shows:
 
 ## Vendor Create (`/vendors/create`) / Vendor Edit (`/vendors/edit/:id`)
 
-<!-- ![Vendor Create](../screenshots/vendors-create.png) -->
-<!-- ![Vendor Edit](../screenshots/vendors-edit.png) -->
+![Vendor Create](../screenshots/vendors-create.png)
+![Vendor Edit](../screenshots/vendors-edit.png)
 
 | Field | Input | Validation |
 |---|---|---|
@@ -474,7 +474,7 @@ On save: navigates to `/vendors`.
 
 ## Users List (`/users`)
 
-<!-- ![Users List](../screenshots/users.png) -->
+![Users List](../screenshots/users.png)
 
 **Header:** "Users" heading + **Create a user** button → `/users/create`
 
@@ -489,8 +489,8 @@ Displays users as a **card grid**. Each card shows:
 
 ## User Create (`/users/create`) / User Edit (`/users/edit/:id`)
 
-<!-- ![User Create](../screenshots/users-create.png) -->
-<!-- ![User Edit](../screenshots/users-edit.png) -->
+![User Create](../screenshots/users-create.png)
+![User Edit](../screenshots/users-edit.png)
 
 | Field | Input | Validation |
 |---|---|---|
