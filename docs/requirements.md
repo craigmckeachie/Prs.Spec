@@ -568,7 +568,7 @@ Passwords are stored as bcrypt hashes (60 characters). The API returns the hashe
 | Send for review | PUT | `/api/requests/review/{id}` | Sets status to REVIEW (or APPROVED if total ≤ $50) |
 | Approve request | PUT | `/api/requests/approve/{id}` | Sets status to APPROVED |
 | Reject request | PUT | `/api/requests/reject/{id}` | Body: plain rejection reason string; sets status to REJECTED |
-| Get line items for request | GET | `/api/lineitems/lines-for-request/{requestId}` | |
-| Create line item | POST | `/api/lineitems` | Recalculates request total; returns item with navigation properties |
-| Update line item | PUT | `/api/lineitems/{id}` | Recalculates request total; returns updated item (200 with body) |
-| Delete line item | DELETE | `/api/lineitems/{id}` | Recalculates request total |
+| Get line items for request | GET | `/api/requestlines?requestId={id}` | Included in `GET /api/requests/{id}` response; rarely fetched separately |
+| Create line item | POST | `/api/requestlines` | Recalculates request total; returns item with navigation properties |
+| Update line item | PUT | `/api/requestlines/{id}` | Recalculates request total; returns updated item (200 with body) |
+| Delete line item | DELETE | `/api/requestlines/{id}` | Recalculates request total |
