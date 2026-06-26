@@ -1,6 +1,6 @@
 # Screenshots
 
-Place screenshots in this directory using the filenames below. Once a screenshot is added, uncomment the corresponding line in `docs/requirements.md` to display it.
+Place screenshots in this directory using the filenames below.
 
 | Page | Route | Filename |
 |---|---|---|
