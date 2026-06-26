@@ -1,0 +1,419 @@
+# Purchase Request System (PRS) Requirements
+
+## Description
+
+The PRS application allows company employees to submit requests to purchase products needed to do their job. Adding products to a request works like adding items to a cart in an online store. Once the employee finishes adding products they submit the request for approval.
+
+Users with **Reviewer** authority can review all submitted requests and decide whether to approve or reject each one.
+
+All primary tables also support full CRUD maintenance.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Back end | ASP.NET Core 8 Web API, Entity Framework Core (code-first), SQL Server |
+| Front end | React 18, TypeScript, Vite, react-hook-form, react-router-dom, Bootstrap |
+| Password hashing | BCrypt.Net-Next (cost factor 11) — hashes stored at 60 chars |
+| API base URL | `http://localhost:5555/api` |
+
+---
+
+## Data Model
+
+The back end uses a code-first approach. Models are C# classes; EF Core generates the schema. `?` in the Notes column means the property is nullable.
+
+### User
+
+| Property | Type | Notes |
+|---|---|---|
+| Id | int | PK, auto-increment |
+| Username | string | max 30, required, unique |
+| Password | string | max 60, required — bcrypt hash, never display |
+| FirstName | string | max 30, required |
+| LastName | string | max 30, required |
+| Phone | string? | max 12, optional |
+| Email | string? | max 255, optional |
+| IsReviewer | bool | grants access to review/approve workflow |
+| IsAdmin | bool | grants access to maintain table data |
+
+### Vendor
+
+| Property | Type | Notes |
+|---|---|---|
+| Id | int | PK, auto-increment |
+| Code | string | max 30, required, unique |
+| Name | string | max 30, required |
+| Address | string | max 30, required |
+| City | string | max 30, required |
+| State | string | max 2, required |
+| Zip | string | max 5, required |
+| Phone | string? | max 12, optional |
+| Email | string? | max 255, optional |
+
+### Product
+
+| Property | Type | Notes |
+|---|---|---|
+| Id | int | PK, auto-increment |
+| PartNumber | string | max 30, required, unique |
+| Name | string | max 30, required |
+| Price | decimal | (11,2), required |
+| Unit | string | max 30, default `"Each"` |
+| PhotoPath | string? | max 255, optional |
+| VendorId | int | FK → Vendor |
+| Vendor | Vendor? | navigation property — always included in API responses |
+
+### Request
+
+| Property | Type | Notes |
+|---|---|---|
+| Id | int | PK, auto-increment |
+| Description | string | max 80, required |
+| Justification | string | max 80, required |
+| RejectionReason | string? | max 80, set by back end on rejection |
+| DeliveryMode | string | max 20, `"Pickup"`, `"Delivery"`, or `"Signature Delivery"` |
+| Status | string | max 10, default `"NEW"` — managed by back end only |
+| Total | decimal | (11,2), default 0 — recalculated by back end after every line item change |
+| UserId | int | FK → User |
+| User | User? | navigation property |
+| RequestLines | ICollection\<RequestLine\> | navigation property |
+
+### RequestLine
+
+| Property | Type | Notes |
+|---|---|---|
+| Id | int | PK, auto-increment |
+| Quantity | int | default 1 |
+| RequestId | int | FK → Request |
+| Request | Request? | navigation property — excluded from JSON responses |
+| ProductId | int | FK → Product |
+| Product | Product? | navigation property |
+
+---
+
+## App Shell
+
+Every page except Sign In is wrapped in a shared layout: a fixed **header bar** at the top and a **left sidebar** beneath it.
+
+**Header bar** — app logo + "Purchase Request System" title (links to `/`). When signed in: user's first + last name with a dropdown containing **Settings**, **Profile**, and **Sign out**. When signed out: a **Sign in** button linking to `/signin`.
+
+**Left sidebar** — "Purchase" section label followed by nav links:
+
+| Link | Route |
+|---|---|
+| Requests | `/requests` |
+| Products | `/products` |
+| Vendors | `/vendors` |
+| Users | `/users` |
+
+---
+
+## Routes Summary
+
+| Route | Page | Notes |
+|---|---|---|
+| `/signin` | Sign In | Outside the app shell layout |
+| `/` | Home | Redirects to `/signin` if no user is in context, or to `/requests` if signed in. Renders nothing while the redirect fires. |
+| `/requests` | Requests List | Supports `?status=` filter |
+| `/requests/create` | Request Create | |
+| `/requests/edit/:id` | Request Edit | |
+| `/requests/detail/:id` | Request Detail | Also hosts workflow actions and line items |
+| `/requests/detail/:id/requestline/create` | Line Item Create | |
+| `/requests/detail/:id/requestline/edit/:lineId` | Line Item Edit | |
+| `/products` | Products List | |
+| `/products/create` | Product Create | |
+| `/products/edit/:id` | Product Edit | |
+| `/vendors` | Vendors List | |
+| `/vendors/create` | Vendor Create | |
+| `/vendors/edit/:id` | Vendor Edit | |
+| `/users` | Users List | |
+| `/users/create` | User Create | |
+| `/users/edit/:id` | User Edit | |
+
+---
+
+## Sign In Page (`/signin`)
+
+Centered layout with app logo, title, and a card containing:
+
+| Field | Type | Validation |
+|---|---|---|
+| Username | text | Required |
+| Password | password | Required |
+
+A "Forgot It?" link is shown below the password field (placeholder, no functionality required). A full-width **Sign in** button submits the form.
+
+**Endpoint:** `POST /api/users/login`  
+**Request body:** `{ "username": "...", "password": "..." }`
+
+On success: strip the `password` field from the response, persist the rest of the user object to `localStorage`, set user context, and navigate to `/requests`.
+
+On failure: display a toast — "Unsuccessful sign in. Please try again."
+
+---
+
+## Requests List (`/requests`)
+
+**Header:** "Requests" heading + **Create a request** button → `/requests/create`
+
+**Status filter** — a dropdown above the table with options `All`, `New`, `Review`, `Approved`, `Rejected`. Selecting a value appends `?status={VALUE}` to the URL and re-fetches `GET /api/requests?status={VALUE}`.
+
+**Table columns:**
+
+| Column | Notes |
+|---|---|
+| # | `request.id` |
+| Description | Primary text; justification displayed below in secondary style |
+| Status | Colored badge |
+| Total | Formatted as `$N` |
+| Requested By | First + last name; delivery mode displayed below in secondary style |
+| *(actions)* | Three-dots dropdown: **Review** → `/requests/detail/:id`, **Edit** → `/requests/edit/:id`, **Delete** (with confirm dialog) |
+
+Delete removes the row from the list on success and shows a success toast.
+
+---
+
+## Request Create (`/requests/create`) / Request Edit (`/requests/edit/:id`)
+
+Both pages render the same form. On save, both navigate to `/requests/detail/{id}`.
+
+**Form fields:**
+
+| Field | Input | Validation |
+|---|---|---|
+| Description | text | Required |
+| Justification | text | Required |
+| Delivery Method | select | Required; options: Pickup, Delivery, Signature Delivery |
+| Status | select | Required; options: New, Review, Approved, Rejected; **disabled on Create**, editable on Edit |
+| Requested By | select | Always disabled; pre-populated from the logged-in user's ID |
+
+On Create: POSTs to `POST /api/requests`, then redirects to the new request's detail page.  
+On Edit: PUTs to `PUT /api/requests/:id`, then redirects to the request's detail page.
+
+---
+
+## Request Detail (`/requests/detail/:id`)
+
+The central screen for a request. Combines the detail view, line item management, and all workflow actions on one page.
+
+**Page header row** — "Request" heading on the left; workflow buttons on the right (see below); Edit (pencil icon) link to `/requests/edit/:id` always present.
+
+**Request summary** — three definition-list columns:
+
+| Column 1 | Column 2 | Column 3 |
+|---|---|---|
+| Description | Delivery Method | Requested By (first + last name) |
+| Justification | Status (colored badge) | Rejection Reason *(only shown if present)* |
+
+**Workflow buttons** — conditional on `request.status`:
+
+| Status | Buttons shown |
+|---|---|
+| `NEW` | **Send for Review** |
+| `REVIEW` | **Approve** + **Reject** (both disabled if request belongs to logged-in user; warning alert is shown) |
+| `APPROVED` / `REJECTED` | *(no workflow buttons)* |
+
+**Items table** (card titled "Items"):
+
+| Column | Notes |
+|---|---|
+| Product | Product name |
+| Price | Formatted as currency |
+| Quantity | |
+| Amount | Price × Quantity, formatted as currency |
+| *(actions)* | Edit (pencil) → `/requests/detail/:id/requestline/edit/:lineId`; Delete (trash, with confirm dialog) |
+
+Table footer: **Add a line** button → `/requests/detail/:id/requestline/create`; running total formatted as currency (calculated client-side from line items).
+
+### Send for Review
+
+`PUT /api/requests/review/{id}` — sets status to `REVIEW` (or auto-approves to `APPROVED` if total ≤ $50). Navigates to `/requests` on success.
+
+### Approve
+
+`PUT /api/requests/approve/{id}` — sets status to `APPROVED`. Navigates to `/requests` on success.
+
+### Reject
+
+Opens a **Bootstrap modal** with:
+- **Rejection Reason** — textarea; required; inline error shown if submitted empty
+- **Cancel** button (closes modal without saving)
+- **Save** button — calls `PUT /api/requests/reject/{id}` with the reason as a plain string body (not JSON-wrapped). Sets status to `REJECTED`. Closes modal and navigates to `/requests` on success.
+
+---
+
+## Line Item Create / Edit
+
+**Create:** `/requests/detail/:id/requestline/create`  
+**Edit:** `/requests/detail/:id/requestline/edit/:lineId`
+
+Both use the same form page (card titled "Item"):
+
+| Field | Input | Validation |
+|---|---|---|
+| Product | select | Required; loaded from `GET /api/products`; displays product name |
+| Price | read-only display | Auto-populated from selected product; formatted as currency; no user input |
+| Quantity | number | Required; minimum 1 |
+| Amount | read-only display | Price × Quantity, recalculated client-side on product/quantity change; formatted as currency; no user input |
+
+**Cancel** navigates back to `/requests/detail/:id`.
+
+On save: POSTs or PUTs the line item. The back end recalculates and updates `request.total`. The POST/PUT response includes nested `product` (with `vendor`) navigation properties. Redirects to `/requests/detail/{requestId}` on success.
+
+---
+
+## Products List (`/products`)
+
+**Header:** "Products" heading + **Create a product** button → `/products/create`
+
+Displays products as a **card grid** (not a table). Each card shows:
+- Product name (large)
+- Price / unit (e.g., `$12.99 /each`)
+- Vendor name (bottom of card)
+- Part number (badge)
+- Three-dots dropdown: **Edit** → `/products/edit/:id`, **Delete** (with confirm dialog)
+
+---
+
+## Product Create (`/products/create`) / Product Edit (`/products/edit/:id`)
+
+| Field | Input | Validation |
+|---|---|---|
+| Product Number | text | Required; max 20 characters |
+| Product Name | text | Required |
+| Price | number | Required; `step="0.01"` (allows decimals) |
+| Unit | text | Required |
+| Vendor | select | Required; loaded from `GET /api/vendors` |
+
+On save: navigates to `/products`. POST returns the product with nested vendor; no refetch needed.
+
+---
+
+## Vendors List (`/vendors`)
+
+**Header:** "Vendors" heading + **Create a vendor** button → `/vendors/create`
+
+Displays vendors as a **card grid**. Each card shows:
+- Vendor name + code badge
+- Address, City / State / Zip
+- Phone (formatted)
+- Email
+- Three-dots dropdown: **Edit** → `/vendors/edit/:id`, **Delete** (with confirm dialog)
+
+---
+
+## Vendor Create (`/vendors/create`) / Vendor Edit (`/vendors/edit/:id`)
+
+| Field | Input | Validation |
+|---|---|---|
+| Vendor Code | text | Required; max 7 characters |
+| Vendor Name | text | Required |
+| Address | text | Required |
+| City | text | Required |
+| State | select | Required; full list of US states; stores 2-letter abbreviation |
+| Zip | text | Required |
+| Phone | text | Optional |
+| Email | email | Optional |
+
+On save: navigates to `/vendors`.
+
+---
+
+## Users List (`/users`)
+
+**Header:** "Users" heading + **Create a user** button → `/users/create`
+
+Displays users as a **card grid**. Each card shows:
+- Avatar circle with initials (first + last initial)
+- Full name
+- Role: `Admin`, `Reviewer`, or `no role assigned` (Admin takes priority when both flags are true)
+- Phone (formatted)
+- Three-dots dropdown: **Edit** → `/users/edit/:id`, **Delete** (with confirm dialog)
+
+---
+
+## User Create (`/users/create`) / User Edit (`/users/edit/:id`)
+
+| Field | Input | Validation |
+|---|---|---|
+| First Name | text | Required |
+| Last Name | text | Required |
+| Email | email | Optional |
+| Phone | text | Optional |
+| Username | text | Required; max 50 characters |
+| Password | password | Required; max 60 characters (bcrypt hash length) |
+| Reviewer | checkbox | Optional; maps to `IsReviewer` |
+| Admin | checkbox | Optional; maps to `IsAdmin` |
+
+On save: navigates to `/users`.
+
+---
+
+## Business Rules
+
+### Auto-Approval
+Any request with a total of **$50.00 or less** is automatically approved when submitted for review — the back end sets status directly to `"APPROVED"`. These requests never appear in the review queue.
+
+### Request Status Flow
+```
+NEW → REVIEW → APPROVED
+             ↘ REJECTED
+```
+Status is always set by the back end. The front end triggers transitions only via the workflow endpoints (`/review`, `/approve`, `/reject`).
+
+### Roles
+- Every person in the User table is a basic user.
+- A user can also be a **Reviewer** and/or an **Admin** (the two flags are independent).
+- Only **Reviewers** can approve or reject requests.
+- A **Reviewer may not approve or reject their own requests** — the Approve and Reject buttons are disabled on the Detail page when the request belongs to the logged-in user.
+- Only **Admins** can access the CRUD maintenance pages.
+
+### Password Security
+Passwords are stored as bcrypt hashes (60 characters). The API returns the hashed password in user responses — the front end must strip it immediately after login and never display or store it.
+
+---
+
+## HTTP Response Conventions
+
+| Verb | Success | Not Found | Bad Request |
+|---|---|---|---|
+| GET | 200 OK | 404 | — |
+| POST | 201 Created + body | — | — |
+| PUT | 200 OK + body | 404 | 400 |
+| DELETE | 204 No Content | 404 | — |
+
+---
+
+## API Quick Reference
+
+| Action | Method | Endpoint | Notes |
+|---|---|---|---|
+| Login | POST | `/api/users/login` | Body: `{ username, password }` |
+| Get all users | GET | `/api/users` | |
+| Get user by ID | GET | `/api/users/{id}` | |
+| Create user | POST | `/api/users` | Returns created user with ID |
+| Update user | PUT | `/api/users/{id}` | Returns updated user (200 with body) |
+| Delete user | DELETE | `/api/users/{id}` | |
+| Get all vendors | GET | `/api/vendors` | |
+| Create vendor | POST | `/api/vendors` | |
+| Update vendor | PUT | `/api/vendors/{id}` | Returns updated vendor (200 with body) |
+| Delete vendor | DELETE | `/api/vendors/{id}` | |
+| Get all products | GET | `/api/products` | |
+| Create product | POST | `/api/products` | Returns product with nested vendor |
+| Update product | PUT | `/api/products/{id}` | Returns updated product (200 with body) |
+| Delete product | DELETE | `/api/products/{id}` | |
+| Get all requests | GET | `/api/requests` | |
+| Get requests by status | GET | `/api/requests?status=REVIEW` | Used for status filter and review queue |
+| Create request | POST | `/api/requests` | Returns request with nested user |
+| Update request | PUT | `/api/requests/{id}` | Returns updated request (200 with body) |
+| Delete request | DELETE | `/api/requests/{id}` | |
+| Send for review | PUT | `/api/requests/review/{id}` | Sets status to REVIEW (or APPROVED if total ≤ $50) |
+| Approve request | PUT | `/api/requests/approve/{id}` | Sets status to APPROVED |
+| Reject request | PUT | `/api/requests/reject/{id}` | Body: plain rejection reason string; sets status to REJECTED |
+| Get line items for request | GET | `/api/lineitems/lines-for-request/{requestId}` | |
+| Create line item | POST | `/api/lineitems` | Recalculates request total; returns item with navigation properties |
+| Update line item | PUT | `/api/lineitems/{id}` | Recalculates request total; returns updated item (200 with body) |
+| Delete line item | DELETE | `/api/lineitems/{id}` | Recalculates request total |
