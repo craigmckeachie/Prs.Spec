@@ -8,6 +8,10 @@ Users with **Reviewer** authority can review all submitted requests and decide w
 
 All primary tables also support full CRUD maintenance.
 
+## Demo
+
+[![PRS Application Demo](https://img.youtube.com/vi/N9Pj0XCxUhY/maxresdefault.jpg)](https://youtu.be/N9Pj0XCxUhY)
+
 ---
 
 ## Tech Stack
