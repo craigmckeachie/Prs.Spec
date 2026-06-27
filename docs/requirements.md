@@ -226,7 +226,8 @@ The back end uses a code-first approach. Models are C# classes; EF Core generate
 
 EF Core generates the schema from the C# models using code-first migrations. The SQL Server database is named **`PrsDbC40`** (configurable in `appsettings.json`).
 
-<!-- ![Database Diagram](../screenshots/db-diagram.png) -->
+![Database Diagram](../screenshots/db-diagram.png)
+
 
 ### Conventions
 
